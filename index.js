@@ -57,6 +57,20 @@ const port = process.env.PORT || 5000;
 const imageHostingKey = process.env.IMAGE_HOSTING_KEY;
 
 
+// Store ID: muham692620a7371e7
+// Store Password (API/Secret Key): muham692620a7371e7@ssl
+
+// Merchant Panel URL: https://sandbox.sslcommerz.com/manage/ (Credential as you inputted in the time of registration)
+
+// Store name: testmuhama56y
+// Registered URL: www.warium.com
+// Session API to generate transaction: https://sandbox.sslcommerz.com/gwprocess/v3/api.php
+// Validation API: https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?wsdl
+// Validation API (Web Service) name: https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php
+
+
+
+
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.i01ualw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
 
@@ -662,7 +676,7 @@ app.get('/', (req, res) => {
   res.send('Server is working');
 });
 
-app.listen(5000, '0.0.0.0', () => {
-  console.log('Server running on http://0.0.0.0:5000');
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server running on http://localhost:${port}`);
 });
 
