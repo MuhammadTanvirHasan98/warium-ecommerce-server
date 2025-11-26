@@ -1,25 +1,24 @@
-const express = require('express');
+const express = require("express");
 const app = express();
-require('dotenv').config();
-const cors = require('cors');
-const jwt = require('jsonwebtoken');
-const multer = require('multer');
+require("dotenv").config();
+const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const multer = require("multer");
 const fileUpload = require("express-fileupload");
 
-
-// middleware 
 // middleware
-
-
+// middleware
 
 // node
 app.use(cors());
 
-// app.use(cors({
-//   origin: ['http://localhost:5173', 'https://your-firebase-app.web.app'],
-//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-//   allowedHeaders: ["Content-Type", "Authorization"] // ✅ allow JWT header
-// }));
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "https://your-firebase-app.web.app"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"], // ✅ allow JWT header
+  })
+);
 
 // const allowedOrigins = [
 //   "https://warium-792f8.web.app",
@@ -44,35 +43,17 @@ app.use(cors());
 //   next();
 // });
 
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-
-
 
 // Declare a port (you can change 5000 to any available port)
 const port = process.env.PORT || 5000;
 
 const imageHostingKey = process.env.IMAGE_HOSTING_KEY;
 
-
-// Store ID: muham692620a7371e7
-// Store Password (API/Secret Key): muham692620a7371e7@ssl
-
-// Merchant Panel URL: https://sandbox.sslcommerz.com/manage/ (Credential as you inputted in the time of registration)
-
-// Store name: testmuhama56y
-// Registered URL: www.warium.com
-// Session API to generate transaction: https://sandbox.sslcommerz.com/gwprocess/v3/api.php
-// Validation API: https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?wsdl
-// Validation API (Web Service) name: https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php
-
-
-
-
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.i01ualw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { default: axios } = require("axios");
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.i01ualw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -80,7 +61,7 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
 async function run() {
@@ -95,23 +76,194 @@ async function run() {
     const userCollection = database.collection("Users");
     const roleRequestCollection = database.collection("RoleRquest");
     const couponCollection = database.collection("Coupon");
+    const paymentCollection = database.collection("payment");
 
+    // payment related api
 
-    //JWT realted api 
+    // Store ID: muham692620a7371e7
+    // Store Password (API/Secret Key): muham692620a7371e7@ssl
 
-    app.post('/jwt', async (req, res) => {
-      const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRATE,
+    // Merchant Panel URL: https://sandbox.sslcommerz.com/manage/ (Credential as you inputted in the time of registration)
+
+    // Store name: testmuhama56y
+    // Registered URL: www.warium.com
+    // Session API to generate transaction: https://sandbox.sslcommerz.com/gwprocess/v3/api.php
+    // Validation API: https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?wsdl
+    // Validation API (Web Service) name: https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php
+
+    app.post("/create-ssl-payment", async (req, res) => {
+      const paymentData = req.body;
+      console.log("Payment Data Received:", paymentData);
+      // Generate Unique Transaction ID
+      const trxId = new ObjectId().toString();
+
+      paymentData.transactionId = trxId;
+
+      // Build SSL Initiate object using user/paymentData
+      const initiate = {
+        store_id: "muham692620a7371e7",
+        store_passwd: "muham692620a7371e7@ssl",
+        total_amount: paymentData.price,
+        currency: "BDT",
+        tran_id: trxId, // unique transaction ID
+        success_url: "http://localhost:5000/success-payment",
+        fail_url: "http://localhost:5173/fail",
+        cancel_url: "http://localhost:5173/cancel",
+        ipn_url: "http://localhost:5000/ipn-succes-payment",
+
+        shipping_method: "Courier",
+
+        // You can replace these with real product info later
+        product_name: paymentData.productName || "Cart Items",
+        product_category: paymentData.productCategory || "E-Commerce",
+        product_profile: "general",
+
+        // Customer info from frontend
+        cus_name:
+          paymentData.customerName ||
+          paymentData.email?.split("@")[0] ||
+          "Customer",
+        cus_email: paymentData.email,
+        cus_add1: paymentData.address || "Dhaka",
+        cus_add2: paymentData.address || "Dhaka",
+        cus_city: paymentData.city || "Dhaka",
+        cus_state: paymentData.state || "Dhaka",
+        cus_postcode: paymentData.postcode || "1000",
+        cus_country: paymentData.country || "Bangladesh",
+        cus_phone: paymentData.customerPhone || "01700000000",
+        cus_fax: paymentData.customerPhone || "01700000000",
+
+        // Shipping info — use same customer info for now
+        ship_name: paymentData.customerName || "Customer Name",
+        ship_add1: paymentData.customerAddress || "Dhaka",
+        ship_add2: paymentData.customerAddress || "Dhaka",
+        ship_city: paymentData.customerCity || "Dhaka",
+        ship_state: paymentData.customerState || "Dhaka",
+        ship_postcode: paymentData.customerPostcode || "1000",
+        ship_country: paymentData.customerCountry || "Bangladesh",
+      };
+
+      const iniResponse = await axios(
+        "https://sandbox.sslcommerz.com/gwprocess/v4/api.php",
         {
-          expiresIn: '1hr'
+          method: "POST",
+          data: initiate,
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
         }
       );
+
+      const saveData = await paymentCollection.insertOne(paymentData);
+
+      console.log("Payment data saved:", saveData);
+      const gatewayUrl = iniResponse?.data?.GatewayPageURL;
+      console.log("SSL Initiate Object:", iniResponse);
+      console.log("Gateway URL:", gatewayUrl);
+
+      res.send({ url: gatewayUrl });
+
+      // res.send({
+      //     success: true,
+      //     initiate
+      // });
+    });
+
+   app.post("/success-payment", async (req, res) => {
+  try {
+    const paymentData = req.body;
+    console.log("Payment Data Received:", paymentData);
+
+    const validationUrl = `https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?val_id=${paymentData.val_id}&store_id=muham692620a7371e7&store_passwd=muham692620a7371e7@ssl&format=json`;
+
+    const { data } = await axios.get(validationUrl);
+
+    console.log("Validation Response:", data);
+
+    // Check valid payment
+    if (data.status !== "VALID") {
+      return res.status(400).send({ message: "Payment validation failed" });
+    }
+
+    // Find saved payment using your stored transaction ID
+    const savedPayment = await paymentCollection.findOne({
+      transactionId: data.tran_id,
+    });
+
+    console.log("savedPayment:", savedPayment);
+
+    console.log("Payment Record:", savedPayment);
+
+    if (!savedPayment) {
+      return res.status(400).send({ message: "Payment not found in DB" });
+    }
+
+    // Update status
+    const updatePayment = await paymentCollection.updateOne(
+      { transactionId: data.tran_id },
+      { $set: { status: "success" } }
+    );
+
+    console.log("Update Result:", updatePayment);
+
+    // Delete cart items from DB
+    const query = {
+      _id: {
+        $in: savedPayment.cartIds.map((id) => new ObjectId(id)),
+      },
+    };
+
+    const deleteResult = await cartsCollection.deleteMany(query);
+    console.log("Deleted cart items:", deleteResult);
+
+    // Redirect user
+    res.redirect("http://localhost:5173/success-payment");
+
+  } catch (err) {
+    console.error("Payment Success Error:", err);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+
+    // app.post("/success-payment", async (req, res) => {
+    //   const paymentData = req.body;
+    //   console.log("Payment Data Received:", paymentData);
+
+    //   const { data } = await axios.get(
+    //     `https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?val_id=${paymentData.val_id}&store_id=muham692620a7371e7&store_passwd=muham692620a7371e7@ssl&format=json`
+    //   );
+
+    //   console.log("Validation Response:", data.status);
+
+    //   if (data.status !== "VALID") {
+    //     res.send({ message: "Payment successful" });
+    //   }
+
+    //   //  update the payment
+    //   const updatePayment = await paymentCollection.updateOne(
+    //     { transactionId: data.tran_id },
+    //     {
+    //       $set: {
+    //         status: "success",
+    //       },
+    //     }
+    //   );
+
+    //   console.log("Update Result:", updatePayment);
+    // });
+
+    // JWT realted api
+
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRATE, {
+        expiresIn: "1hr",
+      });
       res.send({ token });
+    });
 
-    })
-
-
-    //file upload 
+    //file upload
     app.post("/upload-image", async (req, res) => {
       try {
         if (!req.files || !req.files.image) {
@@ -135,44 +287,46 @@ async function run() {
       }
     });
 
-
-
     // Role request collection
-    app.post('/role-requests', async (req, res) => {
+    app.post("/role-requests", async (req, res) => {
       const userInfo = req.body; // use lowercase consistently
       try {
         const result = await roleRequestCollection.insertOne(userInfo);
         res.send(result);
       } catch (error) {
-        console.error('Error inserting role request:', error);
-        res.status(500).send({ message: 'Internal Server Error' });
+        console.error("Error inserting role request:", error);
+        res.status(500).send({ message: "Internal Server Error" });
       }
     });
 
-    app.delete('/role-requests/:id', async (req, res) => {
+    app.delete("/role-requests/:id", async (req, res) => {
       const id = req.params.id;
 
       try {
-        const result = await roleRequestCollection.deleteOne({ _id: new ObjectId(id) });
+        const result = await roleRequestCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
 
         if (result.deletedCount === 1) {
-          res.send({ success: true, message: 'Role request deleted successfully.' });
+          res.send({
+            success: true,
+            message: "Role request deleted successfully.",
+          });
         } else {
-          res.status(404).send({ success: false, message: 'Role request not found.' });
+          res
+            .status(404)
+            .send({ success: false, message: "Role request not found." });
         }
       } catch (error) {
-        console.error('Error deleting role request:', error);
-        res.status(500).send({ message: 'Internal Server Error' });
+        console.error("Error deleting role request:", error);
+        res.status(500).send({ message: "Internal Server Error" });
       }
     });
-
-
-
 
     //products collection
     const upload = multer(); // for non-file form data
 
-    app.post('/products', upload.none(), async (req, res) => {
+    app.post("/products", upload.none(), async (req, res) => {
       try {
         const productData = { ...req.body };
 
@@ -186,7 +340,9 @@ async function run() {
               productData.sizes = JSON.parse(productData.sizes);
             } catch {
               // Otherwise, assume comma-separated string
-              productData.sizes = productData.sizes.split(",").map(s => s.trim());
+              productData.sizes = productData.sizes
+                .split(",")
+                .map((s) => s.trim());
             }
           } else if (!Array.isArray(productData.sizes)) {
             productData.sizes = [];
@@ -203,7 +359,9 @@ async function run() {
             try {
               productData.colors = JSON.parse(productData.colors);
             } catch {
-              productData.colors = productData.colors.split(",").map(c => c.trim());
+              productData.colors = productData.colors
+                .split(",")
+                .map((c) => c.trim());
             }
           } else if (!Array.isArray(productData.colors)) {
             productData.colors = [];
@@ -217,7 +375,7 @@ async function run() {
         // -----------------------------
         if (productData.tags) {
           if (typeof productData.tags === "string") {
-            productData.tags = productData.tags.split(",").map(t => t.trim());
+            productData.tags = productData.tags.split(",").map((t) => t.trim());
           } else if (!Array.isArray(productData.tags)) {
             productData.tags = [];
           }
@@ -259,11 +417,6 @@ async function run() {
       }
     });
 
-
-
-
-
-
     // app.get('/products', async (req, res) => {
     //   // res.setHeader("Access-Control-Allow-Origin", "https://warium-792f8.web.app");
     //   // res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
@@ -272,7 +425,7 @@ async function run() {
     //   res.send(result);
     // })
 
-    app.get('/products', async (req, res) => {
+    app.get("/products", async (req, res) => {
       try {
         const { vendorEmail } = req.query;
 
@@ -288,9 +441,6 @@ async function run() {
         res.status(500).send({ error: "Internal server error" });
       }
     });
-
-
-
 
     // app.get("/api/products/:id", async (req, res) => {
     //   try {
@@ -311,8 +461,11 @@ async function run() {
       }
 
       try {
-        const product = await ProductCollection.findOne({ _id: new ObjectId(id) });
-        if (!product) return res.status(404).json({ message: "Product not found" });
+        const product = await ProductCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (!product)
+          return res.status(404).json({ message: "Product not found" });
         res.json(product);
       } catch (err) {
         console.error("Error fetching product:", err);
@@ -320,13 +473,13 @@ async function run() {
       }
     });
 
-
     // Update product
     app.put("/api/products/:id", async (req, res) => {
       const { id } = req.params;
       const updateData = req.body;
 
-      if (!ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (!ObjectId.isValid(id))
+        return res.status(400).json({ message: "Invalid ID" });
 
       try {
         const result = await ProductCollection.updateOne(
@@ -334,7 +487,8 @@ async function run() {
           { $set: updateData }
         );
 
-        if (!result.matchedCount) return res.status(404).json({ message: "Product not found" });
+        if (!result.matchedCount)
+          return res.status(404).json({ message: "Product not found" });
         res.json({ message: "Product updated successfully" });
       } catch (err) {
         console.error(err);
@@ -342,41 +496,37 @@ async function run() {
       }
     });
 
-
-
     //carts collection
 
-    app.post('/carts', async (req, res) => {
+    app.post("/carts", async (req, res) => {
       const cartItem = req.body;
       const result = await cartsCollection.insertOne(cartItem);
       res.send(result);
-
-    })
+    });
 
     app.get("/carts", async (req, res) => {
       const email = req.query.email;
-      const cartItems = await cartsCollection.find({ userEmail: email }).toArray();
+      const cartItems = await cartsCollection
+        .find({ userEmail: email })
+        .toArray();
       res.send(cartItems);
     });
 
-
-    app.delete('/carts/:id', async (req, res) => {
+    app.delete("/carts/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await cartsCollection.deleteOne(query);
       res.send(result);
-
-
-    })
+    });
 
     //middlewares
     const verifyToken = (req, res, next) => {
       //('inside verify token', req.headers.authorization);
 
       if (!req.headers.authorization) {
-        return res.status(401).send({ message: 'forbiden' });
+        return res.status(401).send({ message: "forbiden" });
       }
-      const token = req.headers.authorization.split(' ')[1];
+      const token = req.headers.authorization.split(" ")[1];
       //  if(!token)
       //  {
       //   return res.status(401).send({message: 'forbiden'});
@@ -384,12 +534,11 @@ async function run() {
 
       jwt.verify(token, process.env.ACCESS_TOKEN_SECRATE, (err, decoded) => {
         if (err) {
-          return res.status(401).send({ message: ' token invailid' });
+          return res.status(401).send({ message: " token invailid" });
         }
         req.decoded = decoded;
         next();
       });
-
     };
 
     const verifyAdmin = async (req, res, next) => {
@@ -397,32 +546,51 @@ async function run() {
         //('Decoded token:', req.decoded);
         const email = req.decoded?.email;
         if (!email) {
-          return res.status(401).send({ message: 'Unauthorized: No email in token' });
+          return res
+            .status(401)
+            .send({ message: "Unauthorized: No email in token" });
         }
 
         const user = await userCollection.findOne({ email });
         //('User found:', user);
 
-        if (!user || user.role !== 'admin') {
-          return res.status(403).send({ message: 'Forbidden access: Admins only' });
+        if (!user || user.role !== "admin") {
+          return res
+            .status(403)
+            .send({ message: "Forbidden access: Admins only" });
         }
 
         next();
       } catch (error) {
-        console.error('Error in verifyAdmin:', error);
-        res.status(500).send({ message: 'Internal server error in admin check' });
+        console.error("Error in verifyAdmin:", error);
+        res
+          .status(500)
+          .send({ message: "Internal server error in admin check" });
       }
     };
 
     //coupon
 
-    app.post('/coupon', async (req, res) => {
+    app.post("/coupon", async (req, res) => {
       try {
-        const { code, discountType, discountValue, minPurchase, startDate, endDate, usageLimit, isActive, addedByEmail, addedByName } = req.body;
+        const {
+          code,
+          discountType,
+          discountValue,
+          minPurchase,
+          startDate,
+          endDate,
+          usageLimit,
+          isActive,
+          addedByEmail,
+          addedByName,
+        } = req.body;
 
         // Basic validation
         if (!code || !discountType || !discountValue) {
-          return res.status(400).json({ error: "Coupon code, type, and value are required." });
+          return res
+            .status(400)
+            .json({ error: "Coupon code, type, and value are required." });
         }
 
         const couponData = {
@@ -444,7 +612,12 @@ async function run() {
 
         const result = await couponCollection.insertOne(couponData);
 
-        res.status(201).json({ message: "Coupon created successfully", couponId: result.insertedId });
+        res
+          .status(201)
+          .json({
+            message: "Coupon created successfully",
+            couponId: result.insertedId,
+          });
       } catch (error) {
         console.error("Error creating coupon:", error);
         res.status(500).json({ error: "Internal Server Error" });
@@ -453,7 +626,9 @@ async function run() {
     // Get only approved coupons
     app.get("/coupons/approved", async (req, res) => {
       try {
-        const result = await couponCollection.find({ isApproved: true }).toArray();
+        const result = await couponCollection
+          .find({ isApproved: true })
+          .toArray();
         res.json(result);
       } catch (error) {
         console.error("Error fetching approved coupons:", error);
@@ -461,10 +636,11 @@ async function run() {
       }
     });
 
-
-    app.get('/coupons/pending', async (req, res) => {
+    app.get("/coupons/pending", async (req, res) => {
       try {
-        const result = await couponCollection.find({ isApproved: false }).toArray();
+        const result = await couponCollection
+          .find({ isApproved: false })
+          .toArray();
         res.json(result);
       } catch (error) {
         console.error("Error fetching pending coupons:", error);
@@ -472,13 +648,15 @@ async function run() {
       }
     });
 
-    app.patch('/coupon/approve/:id', async (req, res) => {
+    app.patch("/coupon/approve/:id", async (req, res) => {
       try {
         const { id } = req.params;
         const { adminEmail, adminName } = req.body; // info about who approves
 
         if (!adminEmail || !adminName) {
-          return res.status(400).json({ error: "Admin info is required to approve coupon" });
+          return res
+            .status(400)
+            .json({ error: "Admin info is required to approve coupon" });
         }
 
         const result = await couponCollection.updateOne(
@@ -507,11 +685,8 @@ async function run() {
       }
     });
 
-
-
-
     //user realted API
-    app.post('/users', async (req, res) => {
+    app.post("/users", async (req, res) => {
       try {
         const userInfo = req.body;
 
@@ -519,129 +694,123 @@ async function run() {
         const existingUser = await userCollection.findOne(query);
 
         if (existingUser) {
-          return res.status(200).send({ message: 'User already exists' });
+          return res.status(200).send({ message: "User already exists" });
         }
 
         const result = await userCollection.insertOne(userInfo);
         res.status(201).send(result); // 201 for "created"
       } catch (error) {
-        console.error('Error inserting user:', error);
-        res.status(500).send({ message: 'Server error while saving user' });
+        console.error("Error inserting user:", error);
+        res.status(500).send({ message: "Server error while saving user" });
       }
     });
 
-    app.get('/users', async (req, res) => {
-
+    app.get("/users", async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
-
-    })
-
+    });
 
     //get user via email
-    app.get('/users/:email', async (req, res) => {
+    app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
 
       try {
         const user = await userCollection.findOne({ email });
 
         if (!user) {
-          return res.status(404).send({ message: 'User not found' });
+          return res.status(404).send({ message: "User not found" });
         }
 
         res.send(user);
       } catch (error) {
-        console.error('Error fetching user:', error);
-        res.status(500).send({ message: 'Internal server error' });
+        console.error("Error fetching user:", error);
+        res.status(500).send({ message: "Internal server error" });
       }
     });
-    app.get('/requested-users', async (req, res) => {
-
+    app.get("/requested-users", async (req, res) => {
       const result = await roleRequestCollection.find().toArray();
       res.send(result);
-
-    })
-
-
+    });
 
     //dashboard related API
 
-    app.delete('/users/:id', async (req, res) => {
+    app.delete("/users/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) }
+      const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
+    });
 
-    })
-
-    app.get('/users/admin/:email', verifyToken, verifyAdmin, async (req, res) => {
-
-      // res.setHeader("Access-Control-Allow-Origin", "https://warium-792f8.web.app");
-      // res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-      // res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-      const email = req.params.email;
-      if (email !== req.decoded.email) {
-        return res.status(403).send({ message: 'unothorized access' })
+    app.get(
+      "/users/admin/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        // res.setHeader("Access-Control-Allow-Origin", "https://warium-792f8.web.app");
+        // res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+        // res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+        const email = req.params.email;
+        if (email !== req.decoded.email) {
+          return res.status(403).send({ message: "unothorized access" });
+        }
+        const query = { email: email };
+        const user = await userCollection.findOne(query);
+        let admin = false;
+        if (user) {
+          admin = user.role === "admin";
+        }
+        res.send({ admin });
       }
-      const query = { email: email };
-      const user = await userCollection.findOne(query);
-      let admin = false
-      if (user) {
-        admin = user.role === 'admin';
-
-      }
-      res.send({ admin });
-
-    })
+    );
 
     // GET all moderators - protected route example
-    app.get('/moderators', async (req, res) => {
+    app.get("/moderators", async (req, res) => {
       try {
-        const moderators = await userCollection.find({ role: 'moderator' }).toArray();
+        const moderators = await userCollection
+          .find({ role: "moderator" })
+          .toArray();
         res.send(moderators);
       } catch (error) {
-        console.error('Error fetching moderators:', error);
-        res.status(500).send({ message: 'Internal server error' });
+        console.error("Error fetching moderators:", error);
+        res.status(500).send({ message: "Internal server error" });
       }
     });
     //get all the vendors
-    app.get('/vendors', async (req, res) => {
+    app.get("/vendors", async (req, res) => {
       try {
-        const moderators = await userCollection.find({ role: 'vendor' }).toArray();
+        const moderators = await userCollection
+          .find({ role: "vendor" })
+          .toArray();
         res.send(moderators);
       } catch (error) {
-        console.error('Error fetching moderators:', error);
-        res.status(500).send({ message: 'Internal server error' });
+        console.error("Error fetching moderators:", error);
+        res.status(500).send({ message: "Internal server error" });
       }
     });
 
-
     ////////////////////
-    app.patch('/users/vendor/:id', async (req, res) => {
+    app.patch("/users/vendor/:id", async (req, res) => {
       const id = req.params.id;
-      ("Vendor route hit:", req.params.id);
+      "Vendor route hit:", req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          role: 'vendor',
+          role: "vendor",
         },
       };
       const result = await userCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
 
-
-
-
     /////////////////////////////////////////////
 
-    app.patch('/users/admin/:id', async (req, res) => {
+    app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
-      ("Vendor route hit:", req.params.id);
+      "Vendor route hit:", req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          role: 'admin',
+          role: "admin",
         },
       };
 
@@ -649,19 +818,18 @@ async function run() {
       res.send(result);
     });
     ///////////////////////////////////////////////////////////////////////////////////////////
-    app.patch('/users/moderator/:id', async (req, res) => {
+    app.patch("/users/moderator/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          role: 'moderator',
+          role: "moderator",
         },
       };
 
       const result = await userCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
-
 
     await client.db("admin").command({ ping: 1 });
     //("Pinged your deployment. You successfully connected to MongoDB!");
@@ -672,11 +840,10 @@ async function run() {
 }
 run().catch(console.dir);
 
-app.get('/', (req, res) => {
-  res.send('Server is working');
+app.get("/", (req, res) => {
+  res.send("Server is working");
 });
 
-app.listen(port, '0.0.0.0', () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`Server running on http://localhost:${port}`);
 });
-
