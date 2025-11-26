@@ -14,9 +14,10 @@ app.use(cors());
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://your-firebase-app.web.app"],
+    origin: ["http://localhost:5173","https://warium-ecommerce.netlify.app", "https://your-firebase-app.web.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"], // ✅ allow JWT header
+    credentials: true,
   })
 );
 
@@ -106,10 +107,10 @@ async function run() {
         total_amount: paymentData.price,
         currency: "BDT",
         tran_id: trxId, // unique transaction ID
-        success_url: "http://localhost:5000/success-payment",
-        fail_url: "http://localhost:5173/fail",
-        cancel_url: "http://localhost:5173/cancel",
-        ipn_url: "http://localhost:5000/ipn-succes-payment",
+        success_url: "https://warium-ecommerce.netlify.app/",
+        fail_url: "https://warium-ecommerce.netlify.app/fail",
+        cancel_url: "https://warium-ecommerce.netlify.app/cancel",
+        ipn_url: "https://warium-ecommerce.netlify.app/success-payment",
 
         shipping_method: "Courier",
 
@@ -217,7 +218,7 @@ async function run() {
     console.log("Deleted cart items:", deleteResult);
 
     // Redirect user
-    res.redirect("http://localhost:5173/success-payment");
+    res.redirect("https://warium-ecommerce.netlify.app/cart");
 
   } catch (err) {
     console.error("Payment Success Error:", err);
