@@ -107,7 +107,7 @@ async function run() {
         total_amount: paymentData.price,
         currency: "BDT",
         tran_id: trxId, // unique transaction ID
-        success_url: "https://warium-ecommerce.netlify.app/",
+        success_url: "https://warium-ecommerce.netlify.app/success-payment",
         fail_url: "https://warium-ecommerce.netlify.app/fail",
         cancel_url: "https://warium-ecommerce.netlify.app/cancel",
         ipn_url: "https://warium-ecommerce.netlify.app/success-payment",
@@ -218,7 +218,7 @@ async function run() {
     console.log("Deleted cart items:", deleteResult);
 
     // Redirect user
-    res.redirect("https://warium-ecommerce.netlify.app/cart");
+    res.redirect("https://warium-ecommerce.netlify.app/success-payment");
 
   } catch (err) {
     console.error("Payment Success Error:", err);
