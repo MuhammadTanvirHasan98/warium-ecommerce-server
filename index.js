@@ -540,6 +540,23 @@ async function run() {
       }
     });
 
+
+    // Get history of orders for specific user
+    app.get("/history", async (req, res) => {
+      const userEmail = req.query.email;
+      try {
+        const orderHistory = await paymentCollection
+          .find({ email: userEmail })
+          .toArray();
+        res.json(orderHistory);
+      }
+      catch (err) {
+        console.error("Error fetching user orders:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+      } 
+    });
+
+
     // Get orders for a vendor
     // app.get("/orders", async (req, res) => {
     //   try {
@@ -575,51 +592,7 @@ async function run() {
 
     app.get("/orders", async (req, res) => {
   try {
-    const orders = await paymentCollection.aggregate([
-      {
-        $addFields: {
-          validMenuItemIds: {
-            $filter: {
-              input: "$menuItemIds",
-              as: "id",
-              cond: {
-                $and: [
-                  { $ne: ["$$id", ""] },
-                  { $ne: ["$$id", null] },
-                  { $eq: [{ $strLenCP: "$$id" }, 24] }
-                ]
-              }
-            }
-          }
-        }
-      },
-      {
-        $addFields: {
-          menuItemObjectIds: {
-            $map: {
-              input: "$validMenuItemIds",
-              as: "id",
-              in: { $toObjectId: "$$id" }
-            }
-          }
-        }
-      },
-      {
-        $lookup: {
-          from: "products",
-          localField: "menuItemObjectIds",
-          foreignField: "_id",
-          as: "products"
-        }
-      },
-      {
-        $project: {
-          menuItemObjectIds: 0,
-          validMenuItemIds: 0
-        }
-      }
-    ]).toArray();
-
+    const orders = await paymentCollection.find().toArray();
     res.json(orders);
   } catch (error) {
     console.error("ORDER FETCH ERROR:", error);
