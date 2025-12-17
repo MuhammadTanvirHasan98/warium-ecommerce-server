@@ -189,7 +189,7 @@ async function run() {
         const { data } = await axios.get(validationUrl);
 
         if (data.status !== "VALID") {
-          return res.redirect("http://localhost:5173/fail");
+          return res.redirect("https://warium-ecommerce.netlify.app/fail");
         }
 
         const savedPayment = await paymentCollection.findOne({
@@ -197,7 +197,7 @@ async function run() {
         });
 
         if (!savedPayment) {
-          return res.redirect("http://localhost:5173/fail");
+          return res.redirect("https://warium-ecommerce.netlify.app/fail");
         }
 
         await paymentCollection.updateOne(
@@ -212,116 +212,16 @@ async function run() {
         }
 
         return res.redirect(
-          `http://localhost:5173/success-payment?tran_id=${data.tran_id}`
+          `https://warium-ecommerce.netlify.app/success-payment?tran_id=${data.tran_id}`
         );
       } catch (err) {
         console.error("Payment Success Error:", err);
-        return res.redirect("http://localhost:5173/fail");
+        return res.redirect("https://warium-ecommerce.netlify.app/fail");
       }
     });
 
-    // app.post("/success-payment", async (req, res) => {
-    //   try {
-    //     const paymentData = req.body;
-    //     console.log("Payment Data Received:", paymentData);
 
-    //     const validationUrl = `https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?val_id=${paymentData.val_id}&store_id=muham692620a7371e7&store_passwd=muham692620a7371e7@ssl&format=json`;
-
-    //     const { data } = await axios.get(validationUrl);
-
-    //     console.log("Validation Response:", data);
-
-    //     // Check valid payment
-    //     if (data.status !== "VALID") {
-    //       return res.status(400).json({
-    //         success: false,
-    //         message: "Payment validation failed",
-    //         redirectUrl: "http://localhost:5173/fail",
-    //       });
-    //     }
-
-    //     // Find saved payment using your stored transaction ID
-    //     const savedPayment = await paymentCollection.findOne({
-    //       transactionId: data.tran_id,
-    //     });
-
-    //     console.log("savedPayment:", savedPayment);
-
-    //     console.log("Payment Record:", savedPayment);
-
-    //     if (!savedPayment) {
-    //       return res.status(400).json({
-    //         success: false,
-    //         message: "Payment not found in DB",
-    //         redirectUrl: "http://localhost:5173/fail",
-    //       });
-    //     }
-
-    //     // Update status
-    //     const updatePayment = await paymentCollection.updateOne(
-    //       { transactionId: data.tran_id },
-    //       { $set: { status: "success" } }
-    //     );
-
-    //     console.log("Update Result:", updatePayment);
-
-    //     // Delete cart items from DB
-    //     const query = {
-    //       _id: {
-    //         $in: savedPayment.cartIds.map((id) => new ObjectId(id)),
-    //       },
-    //     };
-
-    //     const deleteResult = await cartsCollection.deleteMany(query);
-    //     console.log("Deleted cart items:", deleteResult);
-
-    //     // Return success response with redirect URL
-    //     res.json({
-    //       success: true,
-    //       message: "Payment successful",
-    //       redirectUrl: "http://localhost:5173/success-payment",
-    //       transactionId: data.tran_id,
-    //       paymentDetails: data,
-    //     });
-    //   } catch (err) {
-    //     console.error("Payment Success Error:", err);
-    //     res.status(500).json({
-    //       success: false,
-    //       message: "Internal server error",
-    //       redirectUrl: "http://localhost:5173/fail",
-    //     });
-    //   }
-    // });
-
-    // app.post("/success-payment", async (req, res) => {
-    //   const paymentData = req.body;
-    //   console.log("Payment Data Received:", paymentData);
-
-    //   const { data } = await axios.get(
-    //     `https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php?val_id=${paymentData.val_id}&store_id=muham692620a7371e7&store_passwd=muham692620a7371e7@ssl&format=json`
-    //   );
-
-    //   console.log("Validation Response:", data.status);
-
-    //   if (data.status !== "VALID") {
-    //     res.send({ message: "Payment successful" });
-    //   }
-
-    //   //  update the payment
-    //   const updatePayment = await paymentCollection.updateOne(
-    //     { transactionId: data.tran_id },
-    //     {
-    //       $set: {
-    //         status: "success",
-    //       },
-    //     }
-    //   );
-
-    //   console.log("Update Result:", updatePayment);
-    // });
-
-    // JWT realted api
-
+    // JWT token generation
     app.post("/jwt", async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -484,13 +384,8 @@ async function run() {
       }
     });
 
-    // app.get('/products', async (req, res) => {
-    //   // res.setHeader("Access-Control-Allow-Origin", "https://warium-792f8.web.app");
-    //   // res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    //   // res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-    //   const result = await ProductCollection.find().toArray();
-    //   res.send(result);
-    // })
+ 
+    // Get all products or by vendor email
 
     app.get("/products", async (req, res) => {
       try {
@@ -557,39 +452,8 @@ async function run() {
     });
 
 
-    // Get orders for a vendor
-    // app.get("/orders", async (req, res) => {
-    //   try {
-
-    //     const orders = await paymentCollection
-    //       .find()
-    //       .toArray();
-    //     res.json(orders);
-    //   }
-    //   catch (err) {
-    //     console.error("Error fetching orders:", err);
-    //     res.status(500).json({ message: "Server error", error: err.message });
-    //   }
-    // });
-
-    // app.get("/orders", async (req, res) => {
-    //   try {
-    //     const orders = await paymentCollection.find().toArray();
-
-    //     for (let order of orders) {
-    //       const ids = order.menuItemIds.map((id) => new ObjectId(id));
-    //       order.products = await productCollection
-    //         .find({ _id: { $in: ids } })
-    //         .toArray();
-    //     }
-
-    //     res.json(orders);
-    //   } catch (err) {
-    //     res.status(500).json({ error: err.message });
-    //   }
-    // });
-
-
+    // Get all orders for a vendor
+ 
     app.get("/orders", async (req, res) => {
   try {
     const orders = await paymentCollection.find().toArray();
@@ -603,46 +467,6 @@ async function run() {
   }
 });
 
-    // app.get("/orders", async (req, res) => {
-    //   try {
-    //     const orders = await paymentCollection
-    //       .aggregate([
-    //         {
-    //           $addFields: {
-    //             menuItemObjectIds: {
-    //               $map: {
-    //                 input: "$menuItemIds",
-    //                 as: "id",
-    //                 in: { $toObjectId: "$$id" }
-    //               }
-    //             }
-    //           }
-    //         },
-    //         {
-    //           $lookup: {
-    //             from: "products",               // Product collection name
-    //             localField: "menuItemObjectIds",
-    //             foreignField: "_id",
-    //             as: "products"
-    //           }
-    //         },
-    //         {
-    //           $project: {
-    //             menuItemObjectIds: 0            // remove helper field
-    //           }
-    //         }
-    //       ])
-    //       .toArray();
-
-    //     res.json(orders);
-    //   } catch (err) {
-    //     console.error("Error fetching orders:", err);
-    //     res.status(500).json({
-    //       message: "Server error",
-    //       error: err.message
-    //     });
-    //   }
-    // });
 
     // Update product
     app.put("/api/products/:id", async (req, res) => {
