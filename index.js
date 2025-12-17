@@ -112,10 +112,12 @@ async function run() {
         total_amount: paymentData.price,
         currency: "BDT",
         tran_id: trxId, // unique transaction ID
-        success_url: "http://localhost:5000/success-payment",
-        fail_url: "http://localhost:5000/fail",
-        cancel_url: "http://localhost:5000/cancel",
-        ipn_url: "http://localhost:5000/success-payment",
+        success_url:
+          "https://warium-ecommerce-server-zl72.onrender.com/success-payment",
+        fail_url: "https://warium-ecommerce-server-zl72.onrender.com/fail",
+        cancel_url: "https://warium-ecommerce-server-zl72.onrender.com/cancel",
+        ipn_url:
+          "https://warium-ecommerce-server-zl72.onrender.com/success-payment",
 
         shipping_method: "Courier",
 
@@ -219,7 +221,6 @@ async function run() {
         return res.redirect("https://warium-ecommerce.netlify.app/fail");
       }
     });
-
 
     // JWT token generation
     app.post("/jwt", async (req, res) => {
@@ -384,7 +385,6 @@ async function run() {
       }
     });
 
- 
     // Get all products or by vendor email
 
     app.get("/products", async (req, res) => {
@@ -435,7 +435,6 @@ async function run() {
       }
     });
 
-
     // Get history of orders for specific user
     app.get("/history", async (req, res) => {
       const userEmail = req.query.email;
@@ -444,29 +443,26 @@ async function run() {
           .find({ email: userEmail })
           .toArray();
         res.json(orderHistory);
-      }
-      catch (err) {
+      } catch (err) {
         console.error("Error fetching user orders:", err);
         res.status(500).json({ message: "Server error", error: err.message });
-      } 
+      }
     });
-
 
     // Get all orders for a vendor
- 
-    app.get("/orders", async (req, res) => {
-  try {
-    const orders = await paymentCollection.find().toArray();
-    res.json(orders);
-  } catch (error) {
-    console.error("ORDER FETCH ERROR:", error);
-    res.status(500).json({
-      message: "Failed to fetch orders",
-      error: error.message
-    });
-  }
-});
 
+    app.get("/orders", async (req, res) => {
+      try {
+        const orders = await paymentCollection.find().toArray();
+        res.json(orders);
+      } catch (error) {
+        console.error("ORDER FETCH ERROR:", error);
+        res.status(500).json({
+          message: "Failed to fetch orders",
+          error: error.message,
+        });
+      }
+    });
 
     // Update product
     app.put("/api/products/:id", async (req, res) => {
