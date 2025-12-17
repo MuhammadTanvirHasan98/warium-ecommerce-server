@@ -5,6 +5,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const fileUpload = require("express-fileupload");
+const FormData = require("form-data");
 
 // middleware
 // middleware
@@ -79,7 +80,7 @@ async function run() {
     const ProductCollection = database.collection("Products");
     const cartsCollection = database.collection("Carts");
     const userCollection = database.collection("Users");
-    const roleRequestCollection = database.collection("RoleRquest");
+    const roleRequestCollection = database.collection("RoleRequest");
     const couponCollection = database.collection("Coupon");
     const paymentCollection = database.collection("payment");
 
@@ -210,7 +211,9 @@ async function run() {
           });
         }
 
-        return res.redirect(`http://localhost:5173/success-payment?tran_id=${data.tran_id}`);
+        return res.redirect(
+          `http://localhost:5173/success-payment?tran_id=${data.tran_id}`
+        );
       } catch (err) {
         console.error("Payment Success Error:", err);
         return res.redirect("http://localhost:5173/fail");
@@ -321,7 +324,7 @@ async function run() {
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRATE, {
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: "1hr",
       });
       res.send({ token });
@@ -341,7 +344,7 @@ async function run() {
         const response = await axios.post(
           `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
           formData,
-          { headers: formData.getHeaders() }
+          { headers: { ...formData.getHeaders() } }
         );
 
         res.json(response.data);
@@ -537,6 +540,137 @@ async function run() {
       }
     });
 
+    // Get orders for a vendor
+    // app.get("/orders", async (req, res) => {
+    //   try {
+
+    //     const orders = await paymentCollection
+    //       .find()
+    //       .toArray();
+    //     res.json(orders);
+    //   }
+    //   catch (err) {
+    //     console.error("Error fetching orders:", err);
+    //     res.status(500).json({ message: "Server error", error: err.message });
+    //   }
+    // });
+
+    // app.get("/orders", async (req, res) => {
+    //   try {
+    //     const orders = await paymentCollection.find().toArray();
+
+    //     for (let order of orders) {
+    //       const ids = order.menuItemIds.map((id) => new ObjectId(id));
+    //       order.products = await productCollection
+    //         .find({ _id: { $in: ids } })
+    //         .toArray();
+    //     }
+
+    //     res.json(orders);
+    //   } catch (err) {
+    //     res.status(500).json({ error: err.message });
+    //   }
+    // });
+
+
+    app.get("/orders", async (req, res) => {
+  try {
+    const orders = await paymentCollection.aggregate([
+      {
+        $addFields: {
+          validMenuItemIds: {
+            $filter: {
+              input: "$menuItemIds",
+              as: "id",
+              cond: {
+                $and: [
+                  { $ne: ["$$id", ""] },
+                  { $ne: ["$$id", null] },
+                  { $eq: [{ $strLenCP: "$$id" }, 24] }
+                ]
+              }
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          menuItemObjectIds: {
+            $map: {
+              input: "$validMenuItemIds",
+              as: "id",
+              in: { $toObjectId: "$$id" }
+            }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "menuItemObjectIds",
+          foreignField: "_id",
+          as: "products"
+        }
+      },
+      {
+        $project: {
+          menuItemObjectIds: 0,
+          validMenuItemIds: 0
+        }
+      }
+    ]).toArray();
+
+    res.json(orders);
+  } catch (error) {
+    console.error("ORDER FETCH ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch orders",
+      error: error.message
+    });
+  }
+});
+
+    // app.get("/orders", async (req, res) => {
+    //   try {
+    //     const orders = await paymentCollection
+    //       .aggregate([
+    //         {
+    //           $addFields: {
+    //             menuItemObjectIds: {
+    //               $map: {
+    //                 input: "$menuItemIds",
+    //                 as: "id",
+    //                 in: { $toObjectId: "$$id" }
+    //               }
+    //             }
+    //           }
+    //         },
+    //         {
+    //           $lookup: {
+    //             from: "products",               // Product collection name
+    //             localField: "menuItemObjectIds",
+    //             foreignField: "_id",
+    //             as: "products"
+    //           }
+    //         },
+    //         {
+    //           $project: {
+    //             menuItemObjectIds: 0            // remove helper field
+    //           }
+    //         }
+    //       ])
+    //       .toArray();
+
+    //     res.json(orders);
+    //   } catch (err) {
+    //     console.error("Error fetching orders:", err);
+    //     res.status(500).json({
+    //       message: "Server error",
+    //       error: err.message
+    //     });
+    //   }
+    // });
+
     // Update product
     app.put("/api/products/:id", async (req, res) => {
       const { id } = req.params;
@@ -558,6 +692,14 @@ async function run() {
         console.error(err);
         res.status(500).json({ message: "Server error", error: err.message });
       }
+    });
+
+    // Delete product
+    app.delete("/products/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const result = await ProductCollection.deleteOne(query);
+      res.send(result);
     });
 
     //carts collection
@@ -596,7 +738,7 @@ async function run() {
       //   return res.status(401).send({message: 'forbiden'});
       //  }
 
-      jwt.verify(token, process.env.ACCESS_TOKEN_SECRATE, (err, decoded) => {
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
           return res.status(401).send({ message: " token invailid" });
         }
@@ -853,7 +995,7 @@ async function run() {
     ////////////////////
     app.patch("/users/vendor/:id", async (req, res) => {
       const id = req.params.id;
-      "Vendor route hit:", req.params.id;
+      console.log("Vendor route hit:", req.params.id);
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
@@ -868,7 +1010,7 @@ async function run() {
 
     app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
-      "Vendor route hit:", req.params.id;
+      console.log("Admin route hit:", req.params.id);
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
